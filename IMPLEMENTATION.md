@@ -1,49 +1,50 @@
 # SMA-SIB: Reference Implementation Guide
 
-**Version 1.0** · *The "Mutant" Protocol*  
+**Version 1.0** · *Reference Pipeline*
 **January 2026** · *Frozen Engineering Standard*
 
 ---
 
 ## Overview
 
-This document provides the canonical engineering interpretation of the SMA-SIB specification. It emerged from adversarial debate between multiple implementation approaches and represents the convergent solution that survived stress-testing.
+This document provides the canonical engineering interpretation of the SMA-SIB specification. It emerged from adversarial refinement across multiple independent implementation approaches and represents the convergent solution that survived stress-testing.
 
-**Key Insight:** Privacy must be a *geometric* property, not a *lexical* one. We do not filter sensitive data—we project it into a space where specifics cannot geometrically exist.
+**Key Insight:** Privacy must be a *geometric* property, not a *lexical* one. We do not filter sensitive data — we project it into a space where specifics cannot geometrically exist.
 
 ---
 
 ## 1. The Core Pipeline
 
-To satisfy the SMA-SIB invariant ("No stored representation may correspond to a unique real-world entity"), the system must adhere to a strict **One-Way Data Flow**.
+To satisfy the SMA-SIB invariant ("No stored representation may correspond to a unique real-world entity"), the system adheres to a strict one-way data flow.
 
 ```
 ┌─────────────────┐
 │   Raw Input     │
 └────────┬────────┘
-         │ Dirty Context
+         │
          ▼
 ┌─────────────────┐
-│  Pre-Sanitizer  │  ← Optional (optimization only)
+│ Pre-Sanitization │  ← Optional (optimization only)
+│     Layer        │
 └────────┬────────┘
-         │ Cleaned Context
+         │
          ▼
 ┌─────────────────┐
-│    Ephemeral    │  ← High-fidelity, non-persistent
+│    Ephemeral    │  ← Transient computation, non-persistent
 │     Encoder     │
 └────────┬────────┘
-         │ High-Dim Vector
+         │ Transient vector (volatile memory only)
          ▼
-┏━━━━━━━━━━━━━━━━━┓
-┃   THE EVENT     ┃  ← Semantic Irreversibility Boundary
-┃    HORIZON      ┃
-┗━━━━━━━━┳━━━━━━━━┛
+┏━━━━━━━━━━━━━━━━━━━┓
+┃   IRREVERSIBILITY  ┃  ← Semantic Irreversibility Boundary
+┃     BOUNDARY       ┃
+┗━━━━━━━━┳━━━━━━━━━━━┛
          │
     ┌────┴────┐
     │         │
     ▼         ▼
 ┌───────┐  ┌───────┐
-│ Index │  │  NULL │  ← Residual destroyed forever
+│ Index │  │  NULL │  ← Residual destroyed permanently
 └───┬───┘  └───────┘
     │
     ├──────────────┐
@@ -55,22 +56,22 @@ To satisfy the SMA-SIB invariant ("No stored representation may correspond to a 
 └─────────┘  └──────────┘
 ```
 
-**Critical Rule:** Nothing before the Event Horizon persists. Nothing after it can express specifics.
+**Critical Rule:** Nothing before the Irreversibility Boundary persists. Nothing after it can express specifics. The encoder output exists only in volatile memory during processing and is never written to any persistent medium.
 
 ---
 
 ## 2. Component Specifications
 
-### A. The Pre-Sanitizer ("Grok Layer")
+### A. Pre-Sanitization Layer
 
-**Role:** Optimization & Attack Surface Reduction  
-**Mechanism:** Fast Regex / Pattern Matching
+**Role:** Optimization and attack surface reduction.
+**Mechanism:** Fast pattern matching (regex).
 
 **Operational Constraint:** Encoder execution MUST occur in volatile memory with crash-dump suppression enabled (or equivalent sandboxing). Intermediate representations MUST NOT be written to disk under any circumstances, including error conditions. Equivalent isolation guarantees MAY be provided by hardware-enforced enclaves or confidential computing environments.
 
-**Function:** Strips obvious PII (SSNs, emails, phone numbers) before they reach the heavy encoder.
+**Function:** Strips obvious PII patterns (SSNs, emails, phone numbers) before they reach the heavy encoder.
 
-**Constraint:** Failure here is *acceptable*—the Event Horizon will catch it. This layer exists for speed, not safety.
+**Constraint:** Failure here is acceptable — the Irreversibility Boundary catches what this layer misses. This layer exists for speed, not safety.
 
 ```python
 # Example patterns (non-exhaustive)
@@ -82,37 +83,39 @@ PATTERNS = [
 ]
 ```
 
-**Warning:** Regex is brittle. Typos, synonyms, and paraphrases will bypass it. This is why it's *not* the safety boundary.
+**Warning:** Regex is brittle. Typos, synonyms, and paraphrases will bypass it. This is why it is not the safety boundary.
 
 ---
 
-### B. The Event Horizon ("Gemini Layer")
+### B. The Irreversibility Boundary
 
-**Role:** The Semantic Irreversibility Boundary (SIB)  
-**Mechanism:** Hard Vector Quantization (VQ)
+**Role:** Enforcement of the SMA-SIB invariant.
+**Mechanism:** Hard Vector Quantization (VQ).
 
-This is where irreversibility is enforced mathematically, not lexically.
+This is where irreversibility is enforced mathematically.
 
 #### How It Works
 
-1. **Codebook (C):** A frozen, pre-computed matrix of *K* vectors representing only allowed generic concepts (e.g., `Health_Action`, `Legal_Risk`, `Work_Domain`).
+1. **Codebook (C):** A frozen, pre-computed matrix of *K* vectors representing only allowed generic concepts.
 
-2. **Projection:** Input vector **x** (from the dirty encoder) is compared to all vectors in **C**.
+2. **Projection:** The transient input vector is compared to all vectors in the codebook.
 
-3. **Snap:** Find the nearest neighbor:
+3. **Snap:** The nearest neighbor index is selected:
    ```
    index = argmin_i ||x - c_i||²
    ```
 
-4. **Discard:** The residual vector **r = x - c_index** contains the specifics ("Dr. Smith", "Lupus", "$45,000"). This residual is **permanently discarded**.
+4. **Discard:** The residual represents non-representable specificity and is discarded without materialization. It is never computed, stored, or logged.
 
 #### The Safety Guarantee
 
-Without **r**, the transformation `c_index → x` is mathematically impossible to invert. The specific information isn't hidden—it's **gone**.
+Without the residual, the transformation from index back to input is mathematically impossible. The specific information is not hidden — it is gone.
 
-#### Codebook Provenance (Non-Normative)
+#### Codebook Design
 
-Codebooks SHOULD be constructed from synthetic, publicly available, or domain-abstract corpora. Codebooks MUST NOT be trained or refined on user data. Auditable generation procedures are recommended for regulated environments.
+Codebooks SHOULD be constructed from synthetic, publicly available, or domain-abstract corpora. Codebooks MUST NOT be trained or refined on user data. Concept labels are illustrative; actual deployments SHOULD use domain-appropriate abstractions with sufficiently large equivalence classes to prevent meaningful inference from index values alone.
+
+Auditable generation procedures are recommended for regulated environments.
 
 #### Reference Implementation
 
@@ -138,27 +141,13 @@ class IrreversibleQuantizer:
         # CRITICAL: We return the index, not the vector.
         # The difference (residual) is never materialized.
         return index
-    
-    def get_concept(self, index: int) -> str:
-        """
-        Maps index to human-readable concept (for output generation).
-        """
-        # Example mapping - define based on your domain
-        concepts = {
-            0: "HealthInteraction",
-            1: "LegalRisk", 
-            2: "WorkDomain",
-            3: "FinanceAnomaly",
-            # ... etc
-        }
-        return concepts.get(index, "GenericInteraction")
 ```
 
 ---
 
 ### C. Topology Store (Plane 2)
 
-**Mechanism:** Bitmasks
+**Mechanism:** Bitmasks.
 
 Each bit represents a domain. Co-occurrence is recorded via bitwise OR.
 
@@ -190,7 +179,7 @@ has_health_and_legal = (user_state & (HEALTH | LEGAL)) == (HEALTH | LEGAL)
 
 ### D. Time Store (Plane 3)
 
-**Mechanism:** Discrete Buckets
+**Mechanism:** Discrete buckets.
 
 ```python
 from enum import Enum
@@ -228,7 +217,7 @@ def bucket_frequency(count: int) -> Frequency:
 
 ## 3. The Adversarial Compiler (CI/CD Enforcement)
 
-Compliance is enforced at **build time**, not runtime.
+Compliance is enforced at build time, not runtime.
 
 ### The Test Harness
 
@@ -238,9 +227,9 @@ def adversarial_build_test(pipeline, num_samples=1000):
     If this test passes, the build proceeds.
     If it fails, the build is rejected.
     """
-    # 1. Generate synthetic inputs with known proper nouns
+    # 1. Generate synthetic inputs with known identifiers
     inputs = generate_synthetic_pii_logs(num_samples)
-    labels = extract_proper_nouns(inputs)  # Ground truth
+    labels = extract_proper_nouns(inputs)
     
     # 2. Process through the SMA-SIB pipeline
     stored_states = [pipeline.process(inp) for inp in inputs]
@@ -262,22 +251,24 @@ def adversarial_build_test(pipeline, num_samples=1000):
             f"Information is leaking through the boundary."
         )
     
-    return True  # Build passes
+    return True
 ```
 
 ### What This Means
 
-The system cannot be deployed unless it is **proven opaque**. This turns privacy from a policy ("we promise not to look") into a mathematical property ("looking reveals nothing").
+The system cannot be deployed unless it empirically demonstrates opacity under adversarial probing. This turns privacy from a policy ("we promise not to look") into a verifiable property ("looking reveals nothing").
 
-**Critical:** The probe model MUST be discarded after evaluation and MUST NOT be reused across builds. Adversarial test artifacts MUST NOT be persisted beyond the build environment. This prevents accidental meta-learning across iterations.
+**Critical:** The probe model MUST be discarded after evaluation and MUST NOT be reused across builds. Adversarial test artifacts MUST NOT be persisted beyond the build environment.
+
+**Framing:** Irreversibility is structural. The adversarial test verifies that the structure holds — it does not create the guarantee.
 
 ---
 
-## 4. Forbidden Patterns (Anti-Patterns)
+## 4. Forbidden Patterns
 
-These patterns compromise the invariant and are **strictly prohibited**:
+These patterns compromise the invariant and are strictly prohibited.
 
-### ❌ No "Debug Mode"
+### No Debug Mode
 
 ```python
 # FORBIDDEN
@@ -287,28 +278,28 @@ def process(input, debug=False):
         save_to_disk(residual)  # VIOLATION
 ```
 
-There is no flag to save residuals for debugging. Ever.
+There is no flag to preserve residuals. Ever.
 
-### ❌ No Softmax
+### No Softmax
 
 ```python
 # FORBIDDEN
 probabilities = softmax(distances)
-store(probabilities)  # Leaks nuance about the input
+store(probabilities)  # Leaks proximity to other concepts
 ```
 
-Store only the hard ArgMin index. Probability distributions leak information about how "close" the input was to other concepts.
+Store only the hard ArgMin index. Probability distributions leak information about how close the input was to alternative concepts.
 
-### ❌ No Fine-Tuning
+### No Fine-Tuning
 
 ```python
 # FORBIDDEN
 codebook.update(user_data)  # The codebook becomes the memory
 ```
 
-The Codebook is **frozen** at deployment. If you fine-tune on user data, you've encoded user specifics into the model weights.
+The codebook is frozen at deployment. Fine-tuning on user data encodes user specifics into the model weights. See the [Semantic Non-Adaptation Principle](Semantic_Non-Adaptation_Principle.md).
 
-### ❌ No "Temporary" Storage
+### No Temporary Storage
 
 ```python
 # FORBIDDEN
@@ -316,7 +307,7 @@ temp_file = save_input_for_later_processing(input)
 # Even "temporary" creates a window for compromise
 ```
 
-The dirty input exists only in volatile memory during processing, then is gone.
+The input exists only in volatile memory during processing.
 
 ---
 
@@ -326,76 +317,36 @@ Before deployment, verify:
 
 | Check | Requirement |
 |-------|-------------|
-| ☐ Codebook frozen | `codebook.flags.writeable == False` |
-| ☐ No residual storage | Grep codebase for residual/difference/error storage |
-| ☐ Adversarial test passes | Probe accuracy ≤ chance + 1% |
-| ☐ No debug flags | No conditional paths that preserve specifics |
-| ☐ No probability storage | Only hard indices stored |
-| ☐ Topology is flat | No edges, only set membership |
-| ☐ Time is bucketed | No precise timestamps or counts |
+| Codebook frozen | `codebook.flags.writeable == False` |
+| No residual storage | Grep codebase for residual/difference/error storage |
+| Adversarial test passes | Probe accuracy ≤ chance + 1% |
+| No debug flags | No conditional paths that preserve specifics |
+| No probability storage | Only hard indices stored |
+| Topology is flat | No edges, only set membership |
+| Time is bucketed | No precise timestamps or counts |
 
 ---
 
-## 6. Example: Full Pipeline Trace
+## 6. Architecture Decision Records
 
-**Input:** "Dr. Vance at Orion Clinic diagnosed my lupus on 2026-01-10, prescribed 20mg Plaquenil, and I took work leave."
+### Why VQ Over Pattern Matching?
 
-| Stage | State |
-|-------|-------|
-| **Pre-Sanitizer** | Strips "2026-01-10" → `[DATE]`, "20mg" → `[DOSE]` |
-| **Encoder** | Produces vector `[0.9, 0.1, 0.4, 0.0]` (health-heavy) |
-| **VQ Snap** | Nearest to index 0 (`HealthInteraction`), distance 0.17 |
-| **Residual** | `[-0.1, 0.1, 0.4, 0.0]` — **DISCARDED** |
-| **Topology** | `user_state \|= HEALTH \| WORK` → `0b0101` |
-| **Time** | Recency: `RECENT`, Frequency: `LOW` |
+Pattern matching strips known patterns. VQ projects to a constrained space. If an attacker finds a pattern the matcher doesn't know, they win. With VQ, unknown patterns still snap to the nearest generic concept — the attacker cannot recover what does not geometrically exist.
 
-**Stored State:**
-```json
-{
-  "concept_index": 0,
-  "domains": 5,
-  "recency": "RECENT",
-  "frequency": "LOW"
-}
-```
-
-**What can be recovered:** "User had a health interaction, also touched work domain, recently, low frequency."
-
-**What cannot be recovered:** Dr. Vance, Orion Clinic, lupus, 2026-01-10, 20mg, Plaquenil.
-
----
-
-## 7. Architecture Decision Records
-
-### Why VQ over Regex?
-
-Regex strips known patterns. VQ projects to a constrained space. If the attacker finds a pattern regex doesn't know, they win. With VQ, unknown patterns still snap to the nearest safe concept—the attacker can't "find" what doesn't geometrically exist.
-
-### Why Bitmasks over Graphs?
+### Why Bitmasks Over Graphs?
 
 Graphs preserve structure. "Health → Legal → Work" tells a story. Bitmasks say only "these domains were touched." No narrative, no timeline, no edges.
 
-### Why Buckets over Continuous Time?
+### Why Buckets Over Continuous Time?
 
-Continuous values can be correlated. "Activated 147 times in 30 days starting January 3rd" is a fingerprint. "HIGH frequency, RECENT" is not.
-
----
-
-## Appendix: The Convergence Story
-
-This implementation emerged from adversarial debate:
-
-- **Approach A** (Regex/Rules): Fast, brittle, leaks on unknown patterns
-- **Approach B** (VQ/Geometric): Slower, robust, mathematically verifiable
-
-The "Mutant" combines:
-- Regex as optional pre-filter (speed)
-- VQ as mandatory boundary (safety)
-- Bitmasks for topology (simplicity)
-- Buckets for time (auditability)
-
-Independent implementations converged on this architecture, which is a strong signal of design correctness.
+Continuous values can be correlated. A precise activation pattern is a fingerprint. A coarse bucket is not.
 
 ---
 
-*This is not a living project. It's a reference constraint. Do not add features.*
+## Appendix: Convergence Note
+
+This implementation emerged from adversarial refinement across multiple independent approaches. When independent systems converge on the same solution under adversarial conditions, the solution space has typically collapsed to a narrow, correct basin.
+
+---
+
+*This is a reference constraint, not a living project. Do not add features.*
