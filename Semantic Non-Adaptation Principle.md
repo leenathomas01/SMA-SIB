@@ -1,7 +1,13 @@
 # Semantic Non-Adaptation Principle (SNAP)
 
+**Adaptive semantics are a covert memory channel. This principle closes it.**
+
+This principle is required to preserve the SMA-SIB invariant under scale.
+
+---
+
 ## Principle Statement
-In systems governed by the **SMA-SIB invariant**, shared semantic representations **MUST NOT** adapt based on user data, usage patterns, or aggregate statistics. 
+In systems governed by the **SMA-SIB invariant**, shared semantic representations **MUST NOT** adapt based on user data, usage patterns, or aggregate statistics.
 
 Semantic consistency across users **SHALL** be achieved exclusively through static, predefined, and versioned semantic definitions, not through learning, optimization, or feedback derived from user interactions.
 
@@ -10,7 +16,7 @@ Semantic consistency across users **SHALL** be achieved exclusively through stat
 ## Rationale
 **Adaptive semantics introduce implicit correlation.**
 
-When shared semantic structures evolve in response to user behavior—even in aggregate, anonymized, or statistical form—the system begins to encode population-level information. This creates a **covert memory channel** that violates the core SMA-SIB guarantee: that no stored or shared representation may enable inference about specific users, rare conditions, collective events, or temporal patterns.
+When shared semantic structures evolve in response to user behavior — even in aggregate, anonymized, or statistical form — the system begins to encode population-level information. This creates a **covert memory channel** that violates the core SMA-SIB guarantee: that no stored or shared representation may enable inference about specific users, rare conditions, collective events, or temporal patterns.
 
 > **Semantic Non-Adaptation ensures that shared meaning does not become shared memory.**
 
@@ -30,8 +36,8 @@ To comply with the Semantic Non-Adaptation Principle, an SMA-SIB system **MUST**
 ---
 
 ## Non-Goals (Clarifications)
-Semantic Non-Adaptation does **not** require semantic completeness, optimal categorization, or expressive richness. 
-* Lossy, coarse, or over-general semantic collapse is acceptable and often desirable. 
+Semantic Non-Adaptation does **not** require semantic completeness, optimal categorization, or expressive richness.
+* Lossy, coarse, or over-general semantic collapse is acceptable and often desirable.
 * Precision optimization is explicitly subordinate to **irreversibility** and **non-correlation**.
 
 ---
